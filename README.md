@@ -9,6 +9,9 @@ mpiexec -n 8 python xi_map_mpi.py [phase]
 where phase is a float number >=0 and <=1
 
 
+<img width="762" height="675" alt="image" src="https://github.com/user-attachments/assets/86590401-861a-4df3-8229-b261175be56e" />
+
+
 2. to calculate NH(phase) for the whole period, run:
 
 mpiexec -n 8 python NH_period_inclined_mpi.py
@@ -22,3 +25,4 @@ python plot_many_NH_period.py [dirname]
 
 where dirname is the path to the folder with *dat files made beforehand by NH_period_inclined_mpi
 
+<img width="973" height="574" alt="image" src="https://github.com/user-attachments/assets/3389118d-d18d-4d19-845d-3a710d2aa74e" />
