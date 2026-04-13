@@ -127,7 +127,7 @@ def compute_log_xi_map_mpi(phase, XX, YY,  use_accretion_Lx=True, Mdot_override=
         if L_x_used is None:
             L_x_used = getattr(ws, 'L_x_default', None)
             if L_x_used is None:
-                raise RuntimeError("No L_x available: provide Lx_override or set ws.L_x_default or enable accretion Lx.")
+                raise RuntimeError("No Lx available: provide Lx_override or set ws.L_x_default or enable accretion Lx.")
 
     # distances from NS (NS placed at origin in your conventions)
     RR_cm = np.sqrt(XX_cm**2 + YY_cm**2)
@@ -197,9 +197,12 @@ def plot_log_xi_map(log10_xi, XX, YY,
     legend_handles = []
 
     # If contour produced artists with paths, label it; otherwise make a proxy handle
-    if cs and len(cs.collections) > 0 and cs.collections[0].get_paths():
-        cs.collections[0].set_label(f'log10(xi) = {contour_level}')
-        legend_handles.append(cs.collections[0])
+    # Use the new Matplotlib API for contours (avoids .collections warning)
+    if cs.get_paths():
+        # In newer Matplotlib, we label the contour set directly
+        cs.set_label(f'log10(xi) = {contour_level}')
+        # We add the ContourSet to the legend handles
+        legend_handles.append(Line2D([0], [0], color='cyan', lw=1.5, label=f'log10(xi) = {contour_level}'))
     else:
         proxy_contour = Line2D([0], [0], color='cyan', lw=1.5, label=f'log10(xi) = {contour_level}')
         legend_handles.append(proxy_contour)
@@ -216,13 +219,22 @@ def plot_log_xi_map(log10_xi, XX, YY,
 
     
     wake_circle = plt.Circle((pos_ob_cm[0]/ws.a_cm, pos_ob_cm[1]/ws.a_cm),
-                              ws.wake_width_cm (phase)/ws.a , color='blue', fill=False, lw=1.2) 
+                              ws.wake_width_cm (phase)/ws.a , color='blue', fill=False, lw=1.2, label='Wake size') 
     ax.add_patch(wake_circle)
 
-    # add legend entries for markers (use proxy artists for consistent legend)
-    legend_handles.append(Line2D([0],[0], marker='o', color='w', markerfacecolor='cyan', markersize=6, label='NS (origin)'))
-    legend_handles.append(Line2D([0],[0], marker='o', color='w', markerfacecolor='white', markersize=6, label='OB center'))
+    # Use linestyle='None' to remove the connecting line in the legend entry
+    legend_handles.append(Line2D([0], [0], marker='o', color='w', 
+                             markerfacecolor='cyan', markersize=6, 
+                             label='NS (origin)', linestyle='None'))
 
+    legend_handles.append(Line2D([0], [0], marker='o', color='w', 
+                             markerfacecolor='white', markersize=6, 
+                             label='OB center', linestyle='None'))
+
+    # For an "empty" circle (hollow), set markerfacecolor to 'None' or 'none'
+    legend_handles.append(Line2D([0], [0], marker='o', color='blue', 
+                             markerfacecolor='None', markeredgecolor='blue', 
+                             markersize=6, label='Wake size', linestyle='None'))
 
      # 2. Path the NS took to get to current position
     ox, oy = ws.get_past_ns_orbit(phase, ws.Porb_day)
@@ -230,27 +242,34 @@ def plot_log_xi_map(log10_xi, XX, YY,
     # Past Orbit Line
     plt.plot(ox/ws.a_cm, oy/ws.a_cm, 'k:', alpha=0.5, label='Past NS Orbit Path')
 
-    # poly_coords = ws.get_accretion_wake_poly(ws.orbital_state(phase), ws.wake_phase_width)
-    # lx1,ly1, lx2,ly2  
     
-    # path1 = np.column_stack([lx1, ly1])
-    # path2 = np.column_stack([lx2, ly2])
-    # poly_coords = np.vstack([[[0,0]], path1, path2[::-1]])
-    
-    # poly_verts = np.concatenate([path1, path2[::-1]])
-    # #stream_polygon = Path(poly_verts)
-    # plt.fill(poly_verts[:, 0], poly_verts[:, 1], color='cyan', alpha=0.3)
-    # plt.plot(poly_verts[:, 0], poly_verts[:, 1], color='blue', lw=1) # Outline
     ax = plt.gca() # Get current axis
     ws.set_active_wake(phase) 
-    print (">>>>>>>>>>>>>>>>>>>")
-    print (ws._CURRENT_WAKE/ws.a_cm)
-    print (ws._CURRENT_WAKE/ws.R_star)
+    
    
-    wake_patch = Polygon(ws._CURRENT_WAKE/ws.a_cm, closed=True, facecolor='white', edgecolor='white', fill=None, alpha=0.3, label='Accretion Wake')
+    wake_patch = Polygon(ws._CURRENT_WAKE/ws.a_cm, closed=True, facecolor='black', edgecolor='black', fill=None, alpha=0.3, label='Accretion Wake')
 
     ax.add_patch(wake_patch)
+    legend_handles.append(wake_patch)
     #st = ws.full_system_state(phase)
+    # --- ADDING THE LINE OF SIGHT (LOS) ---
+    
+    # Convert degrees to radians
+    omega_rad = np.radians(ws.omega_obs)
+        
+    # Calculate vector components. 
+    # Length 'L' determines how far the LOS arrow stretches across the plot.
+    L = XX.max() * 0.8 
+    dx = L * np.cos(omega_rad)
+    dy = L * np.sin(omega_rad)
+       
+    # Draw the LOS vector starting from the NS (0,0)
+    # Using quiver for an arrow, or plot for a dashed line
+    ax.quiver(0, 0, dx, dy, color='yellow', angles='xy', scale_units='xy', 
+                  scale=1, width=.005)
+        
+    # Optional: Add a dashed line across the whole map
+    ax.plot([0, dx*2], [0, dy*2], color='yellow', linestyle='--', alpha=0.5)
 
     show_visibility  = 0
     if show_visibility :
@@ -263,13 +282,7 @@ def plot_log_xi_map(log10_xi, XX, YY,
         plt.title("Wake Mask (1=Inside, 0=Outside)")        
 
 
-    # wake_patch = Polygon(st['poly_wake']/ws.a_cm, closed=True, facecolor='green', edgecolor='green', fill='green', alpha=0.5, label='Accretion Wake')
-    # ax.add_patch(wake_patch)
-    # lx1, ly1, lx2,ly2 = ws.get_accretion_wake(phase, 0.3)
-    # Plot the line where past-intersected particles are now
-    # ax.plot(lx1/ws.a_cm, ly1/ws.a_cm, 'r--', linewidth=1.5, alpha=0.7, label='Accretion Streamline (Past NS path)')
-    # ax.plot(lx2/ws.a_cm, ly2/ws.a_cm, 'b--', linewidth=1.5, alpha=0.7, label='Accretion Streamline (Past NS path)')
-
+    
 
     ax.set_xlabel('x / a')
     ax.set_ylabel('y / a')
@@ -330,7 +343,7 @@ if __name__ == "__main__":
                                                                         Lx_override=L_x_used)
     
     if rank == 0:
-        plot_log_xi_map(log10_xi, XX, YY, pos_ob_cm, phase, L_x_used, outname=f'xi_map_phase_{phase:.3f}.png', contour_level=2.5)
+        plot_log_xi_map(log10_xi, XX, YY, pos_ob_cm, phase, L_x_used, outname=f'xi_map_phase_{phase:.3f}_geo{ws.sGEOMETRY}.png', contour_level=2.5)
 
 
 

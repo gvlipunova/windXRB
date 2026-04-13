@@ -13,6 +13,10 @@ size = comm.Get_size()
 inclination = ws.inclination_deg
 Mdot_msun = ws.Mdot_wind_msun_per_yr
 
+def safe_legend():
+    """Adds a legend only if labeled artists exist to avoid UserWarnings."""
+    if plt.gca().get_legend_handles_labels()[1]:
+        plt.legend()
 
 def compute_Nh_vs_phases_mpi(phases_full):
     # Split the phases into chunks for each rank
@@ -28,8 +32,7 @@ def compute_Nh_vs_phases_mpi(phases_full):
         
         # 2. Compute the column density
         # Using the 3D calculation from your latest library version
-        my_Nh[i] = ws.compute_Nh_3D(ph, inclination, observer_phi=180.0, R_max = ws.R_max_def
-)
+        my_Nh[i] = ws.compute_Nh_3D(ph, inclination, observer_phi=ws.omega_obs,R_max = ws.R_max_def)
         
         # Progress tracking
         print(f"[Rank {rank}] Processing phase {ph:.3f} ({i+1}/{len(my_phases)})")
@@ -72,13 +75,20 @@ if __name__ == "__main__":
 
         plt.xlabel('Orbital phase (0..1)')
         plt.ylabel('N_H (atoms cm$^{-2}$)')
-        plt.ylim(10**21.75,10**23.5)
+        if ws.NH_min_plot and ws.NH_max_plot:
+            plt.ylim(ws.NH_min_plot, ws.NH_max_plot)
         plt.yscale('log')
-        plt.title(f'MPI Parallel N_H vs Phase (Cores: {size})\n'
-                  f'Mdot={Mdot_msun:.1e} Msun/yr, a={ws.a_cm:.2e} cm, e={ws.e} i={ws.inclination_deg}')
+        
+        title_line1 = f"MPI Parallel N_H vs Phase (Cores: {size})"
+        title_line1 = f"{ws.src}"
+        title_line2 = rf"$\dot{{M}}={Mdot_msun:.1e} M_\odot/yr, e={ws.e}, i={ws.inclination_deg}^\circ, \Omega_{{\rm obs}}={ws.omega_obs}^\circ$"
+
+        title_fig = title_line1 + "\n" + title_line2
+        
+        plt.title(title_fig)
         
         plt.grid(alpha=0.3, which='both')
-        plt.legend()
+        safe_legend()
         plt.tight_layout()
         
         pdf_name = f"Nh_vs_phase_mpi_e{ws.e}_incl{inclination}.pdf"
@@ -97,15 +107,15 @@ if __name__ == "__main__":
         plt.xlabel('Orbital phase (0..1)')
         plt.ylabel(r'N_H / ($\dot{M}_w \,/\, v_\infty \, a \, m_H$)')
         plt.yscale('log')
-        plt.title(f'Normalized N_H vs phase (Cores: {size})\n'
-                f'Mdot={ws.Mdot_wind_msun_per_yr:.1e}, a={ws.a_cm:.3e}, e={ws.e}')
+        plt.title(title_fig)
+
 
         if np.any(eclipsed):
             ymin_norm = np.nanmin(Nh_normalized[~eclipsed]) if np.any(~eclipsed) else 1.0
             plt.plot(phases_full[eclipsed],
                     np.full(np.sum(eclipsed), ymin_norm * 0.5),
                     'rx', label='Eclipsed (NS unseen)')
-        plt.legend()
+        safe_legend()
         plt.grid(alpha=0.3, which='both')
         plt.savefig(f"Nh_normalized_vs_phase_mpi_e{ws.e}.pdf")
         plt.savefig(f"Nh_norm_vs_phase_mpi_e{ws.e}.pdf")
@@ -120,8 +130,8 @@ if __name__ == "__main__":
         plt.xlabel('Orbital phase (0..1)')
         plt.ylabel(r'N_H / ($\dot{M}_w \,/\, v_\infty \, a \, m_H$)')
         plt.yscale('log')
-        plt.title(f'Normalized N_H vs phase (Cores: {size})\n'
-                f'Mdot={ws.Mdot_wind_msun_per_yr:.1e}, a={ws.a_cm:.3e}, e={ws.e}')
+        plt.title(title_fig)
+
 
         if np.any(eclipsed):
             ymin_norm = np.nanmin(Nh_normalized1[~eclipsed]) if np.any(~eclipsed) else 1.0
@@ -150,7 +160,7 @@ if __name__ == "__main__":
         # 3. Join them into a single multi-line string
         full_header = "\n".join(header_parts)
         # 4. Save the file
-        datafilename = f"data/Nh_table_e{ws.e}_geo{ws._GEOMETRY}_d{ws.wake_factor_density}_i{ws.inclination_deg}_rgf{ws.streamlines_rg_fac}_wext{ws.wake_extension}_beta{ws.beta}.dat"
+        datafilename = f"data/Nh_table_e{ws.e}_geo{ws.GEOMETRY}_d{ws.wake_factor_density}_i{ws.inclination_deg}_rgf{ws.streamlines_rg_fac}_wext{ws.wake_extension}_beta{ws.beta}_obs{ws.omega_obs}.dat"
         np.savetxt(
             datafilename,
             np.column_stack([phases_full, Nh_vals, Nh_normalized, Nh_normalized1]),

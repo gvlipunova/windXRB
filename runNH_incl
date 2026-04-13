@@ -1,0 +1,1 @@
+mpiexec -n 8 python $PYPATH/windXRB/NH_period_inclined_mpi.py

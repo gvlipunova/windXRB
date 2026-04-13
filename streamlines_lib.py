@@ -37,7 +37,7 @@ e = 0.8
 inclination_deg = 30
 R_star = 0.2 * a  #default, user can set Ropt
 Rsun = 7e10
-
+omega_obs = 180 # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis)
 
 # 5 geometry parameters: affect profile NH(phase)
 # 1) beta - affect  angle of accretion wake; because v  _orb/v_wind  defines this angle
@@ -71,8 +71,8 @@ streamlines_lim_def = 2.5 * a # used if along_streamlines = 1
 
 map_n_pix = 400
 N_points_to_find_intersections_with_orbit = 200
-_GEOMETRY = 1  # trail is between pos_ns - wake_width .. pos_ns + wake_width
-#_GEOMETRY = 2  # trail is between pos_ns - wake_width .. pos_ns
+GEOMETRY = 1  # trail is between pos_ns - wake_width .. pos_ns + wake_width
+#GEOMETRY = 2  # trail is between pos_ns - wake_width .. pos_ns
 
 # --- Read the configuration file and override defaults if present ---
 config = configparser.ConfigParser()
@@ -119,6 +119,8 @@ if mob is not None:
 # inclination (degrees)
 inclination_deg = _cfg_getfloat('General', 'inclination_deg', inclination_deg)
 
+omega_obs = _cfg_getfloat('General', 'omega_obs', omega_obs) # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis)
+
 # orbital period (keep as-is; user must supply in expected units)
 Porb_day = _cfg_getfloat('General', 'Porb_day', globals().get('Porb_day', None))
 a_cm = np.power( G*(M_ob + M_ns) *  (Porb_day*DAY / (2*np.pi))**2 ,(1/3))
@@ -141,7 +143,7 @@ streamlines_lim_def = _cfg_getfloat('Wake', 'streamlines_lim_def', streamlines_l
 streamlines_rg_fac = _cfg_getfloat('Wake', 'streamlines_rg_fac', streamlines_rg_fac)
 
 roch_lobe_limit = _cfg_getfloat('Wake', 'roch_lobe_limit', roch_lobe_limit)
-_GEOMETRY = _cfg_getint('Wake', 'wake_geometry_choice', _GEOMETRY)
+GEOMETRY = _cfg_getint('Wake', 'wake_geometry_choice', GEOMETRY)
 
 # inclin_aw = _cfg_getfloat('Wake', 'inclin_aw', inclin_aw)
 # width_aw = _cfg_getfloat('Wake', 'width_aw', width_aw)
@@ -161,7 +163,7 @@ except (configparser.NoSectionError, configparser.NoOptionError, ValueError):
     pass
 
 Mdot_wind = Mdot_wind_g_s
-
+Mdot_wind_msun_per_yr = Mdot_wind_g_s / M_sun_g * year_s
 # Keep beta, R_ns, a_cm, and aliases
 beta = _cfg_getfloat('General', 'beta', beta)
 R_ns = _cfg_getfloat('General', 'R_ns', R_ns)
@@ -181,7 +183,8 @@ R_star = _cfg_getfloat('General', 'Ropt', 0.2 * a/Rsun) * Rsun
 
 map_n_pix = _cfg_getint('Calc', 'map_n_pix', map_n_pix)
 
-
+NH_min_plot = _cfg_getfloat('Plot', 'NH_min_plot', None)
+NH_max_plot = _cfg_getfloat('Plot', 'NH_max_plot', None)
 
 
 #  parameters combinations
@@ -190,18 +193,18 @@ Msum = G * (M_ob + M_ns)
 R_star_cm = R_star
 R_max_def = 10.*a
 
-print("Mopt/Msun = ", M_ob/M_sun_g)
-print ("Ropt/Rsun = ",R_star/Rsun)
-print("Ropt/a = ",R_star/a)
-print("Mdot_wind = ", Mdot_wind_g_s / M_sun_g * year_s, "Msun/yr")
-print("beta_wind = ", beta)
+# print("Mopt/Msun = ", M_ob/M_sun_g)
+# print ("Ropt/Rsun = ",R_star/Rsun)
+# print("Ropt/a = ",R_star/a)
+# print("Mdot_wind = ", Mdot_wind_g_s / M_sun_g * year_s, "Msun/yr")
+# print("beta_wind = ", beta)
 
 v_inf = 2.6 * v_p  #https://ui.adsabs.harvard.edu/abs/1995ApJ...455..269L/abstract stars hotter than 21 KK, class < B1
 # take v_inf  if user provided one, otherwise keep default v_inf
 v_inf = _cfg_getfloat('General', 'v_inf_km_s', v_inf/1e5) *1e5
 
 print( "v_inf = ", v_inf*1e-5, " km/s")
-print("Mdot_wind/v_inf = ", Mdot_wind_g_s / v_inf, Mdot_wind_g_s / v_inf/a/m_H)
+#print("Mdot_wind/v_inf = ", Mdot_wind_g_s / v_inf, Mdot_wind_g_s / v_inf/a/m_H)
 
 
 N_steps_from_observer = int(3000.*(R_max_def/1e14))
@@ -411,9 +414,9 @@ def get_accretion_wake (current_phase, phase_width) :
             lx2, ly2 = get_past_intersection_line(future_phase, x_ns=xp2, y_ns=yp2)
             N_points_to_find_intersections_with_orbit = n_points #change gloabl value
     
-    if _GEOMETRY == 2 :
+    if GEOMETRY == 2 :
         return lx1,ly1,lx0,ly0
-    if _GEOMETRY == 1 :    
+    if GEOMETRY == 1 :    
         return lx1,ly1,lx2,ly2
 
 
@@ -675,10 +678,12 @@ def compute_Nh_3D(phase, inclination, observer_phi=0.0, R_max=R_max_def):
     vec_x, vec_y, vec_z = -obs_x, -obs_y, -obs_z
 
     
+    
     n_steps = N_steps_from_observer
     ds = 1.0 / n_steps
+    
     nh = 0.0
-
+    flag_stop=0
     for i in range(n_steps):
         # Distance from observer toward NS
         s = (i + 0.5) * ds
@@ -697,9 +702,13 @@ def compute_Nh_3D(phase, inclination, observer_phi=0.0, R_max=R_max_def):
         dz = pz - 0.0 # OB star is in the orbital plane
 
         dist_to_ob = np.sqrt(dx**2 + dy**2 + dz**2)
-        #print (dist_to_ob/a, px/a,py/a,pz/a)
+        if (phase>=0.2) and (phase<0.23):
+            flag_stop=1
+            #print (phase, dist_to_ob/R_star,"<>", dist_to_ob/a, px/a,py/a,pz/a)
+
         # 4. Check for stellar eclipse
         if dist_to_ob < R_star:
+            print (f'\n************* ECLIPSE  at {phase:.2f} *******************\n')
             return np.nan
 
         # 5. Density calculation
@@ -713,6 +722,8 @@ def compute_Nh_3D(phase, inclination, observer_phi=0.0, R_max=R_max_def):
         n_H = rho / m_H
         nh += n_H * ds * R_max 
 
+    # if flag_stop==1:
+    #     exit()
     return nh
 
 

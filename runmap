@@ -1,0 +1,1 @@
+mpiexec -n 8 python $PYPATH/windXRB/xi_map_mpi.py $1
