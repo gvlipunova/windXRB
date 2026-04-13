@@ -1314,4 +1314,44 @@ def is_in_ballistic_shadow(phase, x, y):
 
 
 
+def get_past_intersection_line_linear(current_phase, Porb_day, n_points=300):
+    """
+    Calculates the current positions of wind particles that once
+    intersected the NS at various points in its past orbit.
+
+    """
+    P_sec = Porb_day * 86400
+    # Look back up to one full orbit
+    lookback_times = np.linspace(0, 1.8 * P_sec, n_points)
+
+    line_x, line_y = [], []
+    curr_st = ws.orbital_state(current_phase)
+    pos_ob_now = curr_st['pos_ob']
+
+    for tau in lookback_times:
+        past_phase = (current_phase - (tau / P_sec)) % 1.0
+        past_st = ws.orbital_state(past_phase)
+
+        # NS position relative to OB star at that past time is -pos_ob
+        r_past_vec = -past_st['pos_ob']
+        r_mag_past = past_st['r_inst']
+
+        # Wind velocity at the distance where the NS was
+        # Note: using ws.v_wind since it's in your library
+        v_w = ws.v_wind(r_mag_past)
+        dist_traveled = v_w * tau
+
+        unit_vector = r_past_vec / r_mag_past
+        r_particle_rel_ob = r_past_vec + (unit_vector * dist_traveled)
+
+        # Convert back to NS-centric coords (where current NS is 0,0)
+        abs_x = pos_ob_now[0] + r_particle_rel_ob[0]
+        abs_y = pos_ob_now[1] + r_particle_rel_ob[1]
+
+        line_x.append(abs_x)
+        line_y.append(abs_y)
+
+    return np.array(line_x), np.array(line_y)
+
+
 
