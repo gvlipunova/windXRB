@@ -5,11 +5,15 @@ venv/
 .vscode/
 arch/
 streamline_wake/
-*pdf
-*png
-*gif
-*jpg
-*mp4
+# --- ignore figure types only in repo root ---
+/*pdf
+/*png
+/*gif
+/*jpg
+/*mp4
+# --- but allow them anywhere in subfolders ---
+GX_dif_geo/*pdf
+GX_dif_geo/*png
 NH_period_inclined.py
 NH_period_mpi.py
 NH_period.py
