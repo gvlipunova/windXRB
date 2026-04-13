@@ -1,13 +1,13 @@
 <b>Calculate N_H along LOS to NS over the period of a binary.</b> 
 
 The binary contains optical star with a spherical wind and NS with  accretion wake where density is increased by some factor compared to the wind.  
-The wake side at the current moment coinides with the locus of the wind particles that "met" NS in the past.
+The wake side at the current moment coincides with the locus of the wind particles that "met" NS in the past.
 
 <img width="456" height="412" alt="image" src="https://github.com/user-attachments/assets/135f53e6-ac17-4fd1-99e9-aab68cda42e4" />
 
 The extension of the wake is set by the fraction of the NS orbit, "remembered" by the wake.
-
-
+The width of the wake equals the accretion radius (variable along the orbit) times user-defined factor. 
+The head of the wake is missing so far.
 
 User <b>parameters</b> should be listed in XRB.ini. See default parameters at the bottom (in the future). XRB_Blondin.ini contains parameters for a binary from paper [Blondin et al (1990)](url)
 
