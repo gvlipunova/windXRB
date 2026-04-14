@@ -1325,12 +1325,12 @@ def get_past_intersection_line_linear(current_phase, Porb_day, n_points=300):
     lookback_times = np.linspace(0, 1.8 * P_sec, n_points)
 
     line_x, line_y = [], []
-    curr_st = ws.orbital_state(current_phase)
+    curr_st = orbital_state(current_phase)
     pos_ob_now = curr_st['pos_ob']
 
     for tau in lookback_times:
         past_phase = (current_phase - (tau / P_sec)) % 1.0
-        past_st = ws.orbital_state(past_phase)
+        past_st = orbital_state(past_phase)
 
         # NS position relative to OB star at that past time is -pos_ob
         r_past_vec = -past_st['pos_ob']
@@ -1338,7 +1338,7 @@ def get_past_intersection_line_linear(current_phase, Porb_day, n_points=300):
 
         # Wind velocity at the distance where the NS was
         # Note: using ws.v_wind since it's in your library
-        v_w = ws.v_wind(r_mag_past)
+        v_w = v_wind(r_mag_past)
         dist_traveled = v_w * tau
 
         unit_vector = r_past_vec / r_mag_past
