@@ -343,7 +343,7 @@ if __name__ == "__main__":
                                                                         Lx_override=L_x_used)
     
     if rank == 0:
-        plot_log_xi_map(log10_xi, XX, YY, pos_ob_cm, phase, L_x_used, outname=f'xi_map_phase_{phase:.3f}_geo{ws.sGEOMETRY}.png', contour_level=2.5)
+        plot_log_xi_map(log10_xi, XX, YY, pos_ob_cm, phase, L_x_used, outname=f'xi_map_phase_{phase:.3f}_geo{ws.GEOMETRY}.png', contour_level=2.5)
 
 
 
