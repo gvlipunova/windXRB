@@ -3,7 +3,7 @@
 The binary contains optical star with a spherical wind and NS with  accretion wake where density is increased by some factor compared to the wind.  
 The wake side at the current moment coincides with the locus of the wind particles that "met" NS in the past.
 
-<img width="456" height="412" alt="image" src="https://github.com/user-attachments/assets/135f53e6-ac17-4fd1-99e9-aab68cda42e4" />
+<img width="456" height="412" alt="image" src="https://github.com/user-attachments/assets/d07495eb-df0e-4958-bd98-925b50788d10" />
 
 The extension of the wake is set by the fraction of the NS orbit, "remembered" by the wake.
 The width of the wake equals the accretion radius (variable along the orbit) times user-defined factor. 
