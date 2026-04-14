@@ -40,7 +40,7 @@ if __name__ == "__main__":
     ox, oy = ws.get_past_ns_orbit(input_phase, ws.Porb_day)
 
     # Past Orbit Line
-    plt.plot(ox, oy, 'k:', alpha=0.5, label='Past NS Orbit Path')
+    plt.plot(ox, oy, 'k:', alpha=0.5, label='NS Orbit')
 
     # 5. Plotting
     # Plot OB star
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Plot NS (fixed at origin in this frame)
     ax.plot(0, 0, 'ko', markersize=5, label='Neutron Star')
 
-    ax.plot(lx, ly, 'b--', linewidth=3.1, alpha=0.9, label='Accretion Streamline')
+    ax.plot(lx, ly, 'b--', linewidth=3.1, alpha=0.9, label='Locus of wind particles which met NS')
 
     # Plot the line where past-intersected particles are now
     #ax.plot(lx1, ly1, 'b--', linewidth=1.5, alpha=0.7, label='Accretion Streamline (Past NS path)')
