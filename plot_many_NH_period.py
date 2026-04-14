@@ -11,6 +11,7 @@ import os
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
+import streamlines_lib as ws
 
 font_size = 18
 ###########################################3
@@ -96,7 +97,7 @@ def main():
 
     # --- Figure 1: Raw N_H ---
     fig1, ax1 = plt.subplots(figsize=(10, 6))
-
+    # fig1_obs, ax1_obs = plt.subplots(figsize=(10, 6))
     # --- Figure 2: Normalized N_H ---
     fig2, ax2 = plt.subplots(figsize=(10, 6))
 
@@ -176,7 +177,9 @@ def main():
     ax1.set_ylabel(r'N$_H$ (atoms cm$^{-2}$)', fontsize=font_size)
     ax1.set_yscale('log')
     ax1.set_xlim(0, 1)
-
+    if ws.NH_min_plot and ws.NH_max_plot:
+            ax1.set_ylim(ws.NH_min_plot, ws.NH_max_plot)
+        
     
 
     ax1.set_title(f'Column Density vs Orbital Phase for {src}')
@@ -186,6 +189,101 @@ def main():
     outfile1 = os.path.join(data_dir, "Nh_all_comparison.pdf")
     fig1.savefig(outfile1)
     print(f"\nSaved: {outfile1}")
+
+
+
+# def main():
+#     # 1. Parse Arguments (Existing code)
+#     if len(sys.argv) < 2:
+#         print("Usage:")
+#         print("  Case 1 (Filenames): python plot_all_Nh.py <directory>")
+#         print("  Case 2 (Parameters): python plot_all_Nh.py <directory> <param1> <param2> ...")
+#         sys.exit(1)
+    
+#     data_dir = sys.argv[1]
+#     params_to_extract = sys.argv[2:]
+
+#     if not os.path.isdir(data_dir):
+#         print(f"Error: '{data_dir}' is not a valid directory.")
+#         sys.exit(1)
+
+#     # --- Find all matching model files ---
+#     pattern = os.path.join(data_dir, "Nh_table*.dat")
+#     files = sorted(glob.glob(pattern))
+
+    # --- NEW: Find observation file ---
+    #obs_pattern = os.path.join(data_dir, "*obs*")
+    # Matches any file containing "obs" that ends in .dat or .txt
+    obs_pattern = os.path.join(data_dir, "*obsdata*.[dt][ax][tt]*")
+    obs_files = glob.glob(obs_pattern)
+    obs_filepath = obs_files[0] if obs_files else None
+    
+    # if not files:
+    #     print(f"No files matching '{pattern}' found.")
+    #     sys.exit(1)
+
+    # Initialize figures (Existing code)
+    # fig1_obs, ax1_obs = plt.subplots(figsize=(10, 6))
+    # fig2, ax2 = plt.subplots(figsize=(10, 6))
+    # fig3, ax3 = plt.subplots(figsize=(10, 6))
+
+    # font_size = 14 # assumed
+    # src = extract_param_from_header("XRB.ini", "src", flag_conf_file=True)
+
+    # --- PLOT MODELS (Your existing loop) ---
+    # for filepath in files:
+    #     basename = os.path.basename(filepath)
+        
+    #     # ... (keep your existing label generation and loading logic) ...
+    #     try:
+    #         data = np.loadtxt(filepath)
+    #         phase = data[:, 0]
+    #         Nh = data[:, 1]
+    #         Nh_norm = data[:, 2]
+    #         Nh_norm1 = data[:, 3] if data.shape[1] > 3 else None
+    #         valid = ~np.isnan(Nh)
+            
+    #         label = basename if not params_to_extract else "..." # Use your existing label logic
+
+    #         ax1.plot(phase[valid], Nh[valid], linestyle='-', marker='.', markersize=3, label=label, alpha=0.6)
+    #         # ... (keep your existing plot logic for ax2 and ax3) ...
+    #     except:
+    #         continue
+
+    # ---  Plot Observations if found ---
+    if obs_filepath:
+        try:
+            print(f"Found observation file: {os.path.basename(obs_filepath)}")
+            # Expecting columns: Phase, Value, Error
+            obs_data = np.loadtxt(obs_filepath)
+            obs_phase = obs_data[:, 0]
+            obs_val = obs_data[:, 1]
+            obs_err = obs_data[:, 2]
+            print (obs_val, obs_err)
+            # Plotting on Figure 1 (Raw Values)
+            ax1.errorbar(obs_phase, obs_val, yerr=obs_err, fmt='ko', 
+                         capsize=3, label="Observations", zorder=5)
+            
+            # If you digitized 10^22 units like in the previous prompt, 
+            # ensure units match! (e.g., obs_val * 1e22)
+            
+        except Exception as e:
+            print(f"Warning: Could not plot observations from {obs_filepath}: {e}")
+
+    # --- Format Figure 1 (Existing code) ---
+    ax1.set_xlabel('Orbital phase (0..1)', fontsize=font_size)
+    ax1.set_ylabel(r'N$_H$ (atoms cm$^{-2}$)', fontsize=font_size)
+    ax1.set_yscale('log')
+    ax1.set_xlim(0, 1)
+    ax1.set_title(f'Column Density vs Orbital Phase for {src}')
+    ax1.legend(fontsize=font_size-4, loc='best')
+    ax1.grid(alpha=0.3, which='both')
+    fig1.tight_layout()
+    
+    outfile1 = os.path.join(data_dir, "Nh_all_comparison_with_obs.pdf")
+    fig1.savefig(outfile1)
+    print(f"\nSaved comparison with observations: {outfile1}")
+
 
     # --- Format Figure 2 ---
     ax2.set_xlabel('Orbital phase (0..1)', fontsize=font_size)
