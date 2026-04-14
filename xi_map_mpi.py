@@ -253,7 +253,7 @@ def plot_log_xi_map(log10_xi, XX, YY,
     legend_handles.append(wake_patch)
     #st = ws.full_system_state(phase)
     # --- ADDING THE LINE OF SIGHT (LOS) ---
-    
+   
     # Convert degrees to radians
     omega_rad = np.radians(ws.omega_obs)
         

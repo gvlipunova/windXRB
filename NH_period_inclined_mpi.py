@@ -81,7 +81,7 @@ if __name__ == "__main__":
         
         title_line1 = f"MPI Parallel N_H vs Phase (Cores: {size})"
         title_line1 = f"{ws.src}"
-        title_line2 = rf"$\dot{{M}}={Mdot_msun:.1e} M_\odot/yr, e={ws.e}, i={ws.inclination_deg}^\circ, \Omega_{{\rm obs}}={ws.omega_obs}^\circ$"
+        title_line2 = rf"$\dot{{M}}={Mdot_msun:.1e} M_\odot/yr, e={ws.e}, i={ws.inclination_deg}^\circ, \Omega_{{\rm obs}}={ws.omega_obs:.1f}^\circ$"
 
         title_fig = title_line1 + "\n" + title_line2
         

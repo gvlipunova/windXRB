@@ -37,7 +37,8 @@ e = 0.8
 inclination_deg = 30
 R_star = 0.2 * a  #default, user can set Ropt
 Rsun = 7e10
-omega_obs = 180 # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis)
+omega_obs = 180 # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis) 
+omega_PL = 90 # periastron longitude, it is measured from the ascending node in the direction of motion;  ascending node - is one of 2 points on the orbit, lying on the line which is the intersection of the orbital plane and sky plane. Ascending node is the point at which the  orbiting star moves away from the observer. omega_obs = 270-omega
 
 # 5 geometry parameters: affect profile NH(phase)
 # 1) beta - affect  angle of accretion wake; because v  _orb/v_wind  defines this angle
@@ -119,7 +120,9 @@ if mob is not None:
 # inclination (degrees)
 inclination_deg = _cfg_getfloat('General', 'inclination_deg', inclination_deg)
 
-omega_obs = _cfg_getfloat('General', 'omega_obs', omega_obs) # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis)
+omega_PL = _cfg_getfloat('General', 'omega_PL', omega_PL) 
+
+omega_obs = 270 - omega_PL # observer's direction in degrees (0 = along x-axis, 90 = along y-axis, 180 = opposite x-axis)
 
 # orbital period (keep as-is; user must supply in expected units)
 Porb_day = _cfg_getfloat('General', 'Porb_day', globals().get('Porb_day', None))
@@ -141,6 +144,8 @@ wake_extension = _cfg_getfloat('Wake', 'wake_extension', wake_extension)
 phase_def = _cfg_getfloat('Wake', 'phase_def', phase_def)
 streamlines_lim_def = _cfg_getfloat('Wake', 'streamlines_lim_def', streamlines_lim_def)
 streamlines_rg_fac = _cfg_getfloat('Wake', 'streamlines_rg_fac', streamlines_rg_fac)
+wake_width_rg_fac = _cfg_getfloat('Wake', 'wake_width_rg_fac', streamlines_rg_fac) # if not provided, use same as streamlines_rg_fac
+streamlines_rg_fac = wake_width_rg_fac  
 
 roch_lobe_limit = _cfg_getfloat('Wake', 'roch_lobe_limit', roch_lobe_limit)
 GEOMETRY = _cfg_getint('Wake', 'wake_geometry_choice', GEOMETRY)
@@ -185,7 +190,7 @@ map_n_pix = _cfg_getint('Calc', 'map_n_pix', map_n_pix)
 
 NH_min_plot = _cfg_getfloat('Plot', 'NH_min_plot', None)
 NH_max_plot = _cfg_getfloat('Plot', 'NH_max_plot', None)
-
+move_zero_phase_to_mid_eclipse=_cfg_getstr('Plot', 'move_zero_phase_to_mid_eclipse', 'False')    
 
 #  parameters combinations
 v_p = np.sqrt(2 * G * M_ob / R_star)
@@ -218,7 +223,25 @@ def solve_kepler(M, e, guess=None):
     E = fsolve(lambda x: x - e * np.sin(x) - M, guess)[0]
     return E
 
-
+def calculate_mid_eclipse_phase(eccentricity, omega_PL):
+    # 1. Convert omega to radians
+    omega_rad = np.radians(omega_PL)
+    
+    # 2. True anomaly at superior conjunction
+    nu_mid = (np.pi / 2.0) - omega_rad
+    
+    # 3. Eccentric Anomaly (E)
+    # Using arctan2-style logic to ensure we stay in the correct quadrant
+    E = 2 * np.arctan(np.sqrt((1 - eccentricity) / (1 + eccentricity)) * np.tan(nu_mid / 2.0))
+    
+    # 4. Mean Anomaly (M)
+    M = E - eccentricity * np.sin(E)
+    
+    # 5. Convert to Phase (0 to 1)
+    phase = M / (2 * np.pi)
+    
+    # Wrap phase to [0, 1] range
+    return phase % 1.0
 
 def orbital_state(phase, e=e, a=a, Msum=Msum, R_star=R_star):
 
@@ -253,6 +276,61 @@ def orbital_state(phase, e=e, a=a, Msum=Msum, R_star=R_star):
         'pos_ob': pos_ob,
         'v_orb_vec': v_orb_vec,
         'phase': phase,
+    }
+
+
+def orbital_state_and_eclipse(phase, e=e, a=a, Msum=Msum, R_star=R_star, omega_PL=0.0):
+    # 1. Standard Keplerian motion to find True Anomaly (nu)
+    M_anom = 2. * np.pi * phase
+    E_anom = solve_kepler(M_anom, e)
+    
+    # nu is the angle from periastron
+    nu = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E_anom / 2))
+    r_inst = a * (1 - e**2) / (1 + e * np.cos(nu))
+
+    # 2. Geometry relative to the Observer
+    omega_rad = np.radians(omega_PL)
+    
+    # nu_inf: True anomaly where NS is closest to observer (Inferior Conjunction)
+    # Based on your geometry: 270 - omega
+    nu_inf = (3 * np.pi / 2) - omega_rad
+    
+    # Relative angle between current position and the line of sight (LOS)
+    # delta_theta = 0 at inferior conjunction, delta_theta = pi at mid-eclipse
+    delta_theta = nu - nu_inf
+    
+    # Perpendicular distance from the Neutron Star to the Line of Sight
+    dist_to_los = np.abs(r_inst * np.sin(delta_theta))
+    
+    # Projection along the Line of Sight 
+    # (Positive = NS is closer to us than the star, Negative = NS is behind)
+    z_los = r_inst * np.cos(delta_theta)
+
+    # 3. Eclipse Condition: 
+    # Perpendicular distance is less than stellar radius AND it is behind the star
+    is_eclipsed = (dist_to_los < R_star) and (z_los < 0)
+
+    # 4. Existing velocity/position vectors
+    gamma = np.arctan((e * np.sin(nu)) / (1 + e * np.cos(nu)))
+    v_orb_mag = np.sqrt(Msum * (2/r_inst - 1/a))
+    
+    # Position in a coordinate system where Periastron is at (r, 0)
+    pos_internal = np.array([r_inst * np.cos(nu), r_inst * np.sin(nu)])
+    
+    v_orb_angle = nu + np.pi/2 + gamma
+    v_orb_vec = np.array([v_orb_mag * np.cos(v_orb_angle), v_orb_mag * np.sin(v_orb_angle)])
+
+    return {
+        'E_anom': E_anom,
+        'nu': nu,
+        'r_inst': r_inst,
+        'gamma': gamma,
+        'pos_internal': pos_internal, # Position relative to periastron
+        'v_orb_vec': v_orb_vec,
+        'phase': phase,
+        'is_eclipsed': is_eclipsed,
+        'dist_to_los': dist_to_los,
+        'z_los': z_los
     }
 
 
